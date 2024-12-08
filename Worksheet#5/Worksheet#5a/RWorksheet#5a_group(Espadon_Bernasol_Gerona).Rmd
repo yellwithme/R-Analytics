@@ -1,26 +1,28 @@
 ---
-title: "Worksheet#5a"
-author: "Espadon, Gerona, Bernasol"
-date: "2024-11-23"
-output: pdf_document
+output:
+  pdf_document: default
+  html_document: default
 ---
+---
+title: "RWorksheet_#5"
+author: "Espadon, Gerona, Bernasol"
+date: "2024-12-06"
+output: pdf_document
 
 
-```{r, include=FALSE}
-options(tinytex.verbose = TRUE)
-```
-
-```{r}
 # Load necessary libraries
+```{r}
 library(rvest)
 library(httr)
 library(dplyr)
 library(polite)
+library(stringr)
+library(ggplot2)
 ```
 
 
-```{r}
 # Define target URL
+```{r}
 url <- 'https://www.imdb.com/chart/toptv/'
 
 # Create a polite session
@@ -30,8 +32,8 @@ session
 ```
 
 
-```{r}
 #Extracting the ranks and titles
+```{r}
 title_list <- read_html(url) %>%
 html_nodes('.ipc-title__text') %>%
 html_text()
@@ -39,8 +41,9 @@ html_text()
 title_list
 ```
 
-```{r}
+
 #Cleaning extracted text
+```{r}
 title_list_sub <- as.data.frame(title_list[3:27], stringsAsFactors = FALSE)
 colnames(title_list_sub) <- "ranks"
 
@@ -58,9 +61,9 @@ rank_title
 ```
 
 
-```{r}
 # Scrape Ratings
 #Extracting tv rating, the number of people who voted, the number of episodes, and the year it was released.
+```{r}
 rating_ls <- read_html(url) %>%
 html_nodes('.ipc-rating-star--rating') %>%
 html_text()
@@ -69,8 +72,8 @@ rating_ls
 ```
 
 
-```{r}
 # Scrape Vote Counts
+```{r}
 voter_ls <- read_html(url) %>%
 html_nodes('.ipc-rating-star--voteCount') %>%
 html_text()
@@ -81,8 +84,8 @@ print(voter_ls)
 ```
 
 
-```{r}
 #extracted the number of episodes
+```{r}
 eps_ls <- read_html(url) %>%
 html_nodes('span.sc-300a8231-7.eaXxft.cli-title-metadata-item:nth-of-type(2)') %>%
 html_text()
@@ -95,8 +98,8 @@ print(num_eps)
 ```
 
 
-```{r}
 #extracted the year released
+```{r}
 years <- read_html(url) %>%
 html_nodes('span.sc-300a8231-7.eaXxft.cli-title-metadata-item:nth-of-type(1)') %>%
 html_text()
@@ -118,14 +121,11 @@ top_tv_shows
 ```
 
 
-
 ```{r}
 home_link <- 'https://www.imdb.com/chart/toptv/'
 main_page <- read_html(home_link)
-```
 
 
-```{r}
 links <- main_page %>%
 html_nodes("a.ipc-title-link-wrapper") %>%
 html_attr("href")
@@ -133,9 +133,8 @@ html_attr("href")
 links
 ```
 
-
-```{r}
 # Loop to get link of each show's page
+```{r}
 show_data <- lapply(links, function(link) {
 complete_link <- paste0("https://imdb.com", link)
 
@@ -164,18 +163,13 @@ html_text()
 
 return(data.frame(Show_Link = complete_link, User_Reviews = usrv_count, Critic = critic_df, Popularity_Rating = pop_rating))
 })
-```
 
-
-
-```{r}
 show_url_df <- do.call(rbind, show_data)
 print(show_url_df)
 
 shows <- cbind(top_tv_shows, show_url_df)
 shows
 ```
-
 
 ```{r}
 #knitr::kable()
@@ -188,6 +182,7 @@ kable_styling(font_size = 8)
 ```
 
 
+
 ```{r}
 library(kableExtra)
 
@@ -198,4 +193,109 @@ kable_classic(full_width = T, html_font = "Arial Narrow") %>%
 kable_styling(font_size = 8)
 ```
 
+
+
+#Extracting Amazon Product Reviews
+
+```{r}
+url <- "https://www.amazon.com/"
+
+# Define the scraping function
+scrape_amazon <- function(url) {
+page <- read_html(url)
+
+# Extract product details
+products <- page %>% html_nodes(".s-title-instructions-style") %>% html_text(trim = TRUE)
+prices <- page %>% html_nodes(".a-price-whole") %>% html_text(trim = TRUE)
+ratings <- page %>% html_nodes(".a-icon-alt") %>% html_text(trim = TRUE)
+reviews <- page %>% html_nodes(".s-underline-text") %>% html_text(trim = TRUE)
+
+# Handle missing data by aligning lengths
+max_length <- max(length(products), length(prices), length(ratings), length(reviews))
+products <- c(products, rep(NA, max_length - length(products)))
+prices <- c(prices, rep(NA, max_length - length(prices)))
+ratings <- c(ratings, rep(NA, max_length - length(ratings)))
+reviews <- c(reviews, rep(NA, max_length - length(reviews)))
+
+# Create a data frame
+return(data.frame(
+Product = products,
+Price = as.numeric(gsub("[^0-9.]", "", prices)),
+Ratings = as.numeric(gsub("[^0-9.]", "", str_extract(ratings, "^[0-9.]+"))),
+Reviews = as.numeric(gsub("[^0-9]", "", reviews)),
+stringsAsFactors = FALSE
+))
+}
+```
+
+
+```{r}
+# Define URLs for categories
+categories <- c("Laptops", "Books", "Shoes", "Televisions", "Fashion Bags")
+urls <- c(
+'https://www.amazon.com/s?k=laptop&crid=108GXR4VZZEMS&sprefix=lap%2Caps%2C680&ref=nb_sb_ss_ts-doa-p_1_3',
+'https://www.amazon.com/s?k=books&i=stripbooks-intl-ship&crid=3C5FBQTXKB575&sprefix=books%2Cstripbooks-intl-ship%2C365&ref=nb_sb_noss_1',
+'https://www.amazon.com/s?k=shoes&i=stripbooks-intl-ship&crid=PWE5DZDD7EU7&sprefix=shoes%2Cstripbooks-intl-ship%2C457&ref=nb_sb_noss_1',
+'https://www.amazon.com/s?k=television&i=stripbooks-intl-ship&crid=O8JO99JDMGHY&sprefix=television%2Cstripbooks-intl-ship%2C355&ref=nb_sb_noss_1',
+'https://www.amazon.com/s?k=fashion+bags&i=stripbooks-intl-ship&crid=3N3PC8YMHSW66&sprefix=fashion+bags%2Cstripbooks-intl-ship%2C635&ref=nb_sb_noss_2'
+)
+
+# Scrape data for all categories
+amazon_data <- lapply(urls, scrape_amazon)
+names(amazon_data) <- categories
+
+# Combine all data into a single data frame
+combined_data <- bind_rows(amazon_data, .id = "Category")
+```
+
+# Plot price distributions
+```{r price-distribution, echo=FALSE}
+for (category in categories) {
+data <- amazon_data[[category]]
+p <- ggplot(data, aes(x = Price)) +
+geom_histogram(bins = 10, fill = "blue", color = "black", alpha = 0.7) +
+labs(title = paste("Price Distribution for", category),
+x = "Price (USD)", y = "Count") +
+theme_minimal()
+print(p) # Explicitly print plot
+}
+```
+
+
+# Plot price vs ratings
+```{r price-vs-ratings, echo=FALSE}
+# Plot price vs ratings with missing value handling
+for (category in categories) {
+data <- amazon_data[[category]]
+
+# Remove rows with non-finite prices or ratings
+data <- data %>% filter(!is.na(Price) & is.finite(Price) & !is.na(Ratings) & is.finite(Ratings))
+
+p <- ggplot(data, aes(x = Ratings, y = Price)) +
+geom_point(color = "blue") +
+geom_smooth(method = "lm", se = FALSE, color = "red") +
+labs(title = paste("Price vs Ratings for", category),
+x = "Ratings (Stars)", y = "Price (USD)") +
+theme_minimal()
+print(p) # Explicitly print plot
+}
+```
+
+```{r}
+# Rank products within each category
+rank_products <- function(data) {
+data <- data %>%
+arrange(desc(Ratings), Price) %>%
+mutate(Rank = row_number())
+return(data)
+}
+
+ranked_data <- lapply(amazon_data, rank_products)
+
+# Print top 5 products per category
+for (category in categories) {
+cat("\nTop 5 Products in", category, "\n")
+print(head(ranked_data[[category]], 5))
+}
+```
 
