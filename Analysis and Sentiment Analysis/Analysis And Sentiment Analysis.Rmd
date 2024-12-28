@@ -1,0 +1,152 @@
+---
+title: "Analysis and Sentiment Analysis"
+author: "Espadon, Bernasol, Gerona"
+output: pdf_document
+---
+Data Cleaning
+```{r}
+library(dplyr)
+library(stringr)
+```
+
+
+```{r}
+tweets_df <- read.csv("/cloud/project/Analysis and Sentiment Analysis/tweetsDF.csv")
+```
+
+```{r}
+# Remove duplicates
+tweets_df <- tweets_df %>%
+  distinct()
+
+```
+
+
+```{r}
+missing_values <- colSums(is.na(tweets_df))
+```
+
+
+```{r}
+write.csv(tweets_df, "cleaned_tweets.csv", row.names = FALSE)
+```
+
+```{r}
+tweets_df$text <- tweets_df$text %>%
+str_replace_all("http\\S+|www\\.\\S+", "") %>%
+str_replace_all("[^[:alnum:][:space:]]", "") %>%
+str_squish()
+```
+
+
+```{r}
+print(head(tweets_df))
+```
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+```
+
+```{r}
+tweets_df$created <- ymd_hms(tweets_df$created)
+```
+
+
+```{r}
+daily_trend <- tweets_df %>%
+mutate(date = as_date(created)) %>%
+group_by(date) %>%
+summarise(tweet_count = n())
+```
+
+```{r}
+ggplot(daily_trend, aes(x = date, y = tweet_count)) +
+geom_line(color = "blue", size = 1) +
+labs(
+title = "Daily Tweet Trend",
+x = "Date",
+y = "Number of Tweets"
+) +
+theme_minimal()
+```
+
+
+
+Sentimental Analysis
+
+
+```{r}
+library(dplyr)
+library(tidytext)
+library(ggplot2)
+```
+
+```{r}
+bing_lexicon <- get_sentiments("bing")
+```
+
+```{r}
+tokenized_tweets <- tweets_df %>%
+unnest_tokens(word, text) %>%
+anti_join(stop_words)
+```
+
+```{r}
+sentiment_analysis <- tokenized_tweets %>%
+inner_join(bing_lexicon, by = "word") %>%
+count(sentiment) %>%
+mutate(percent = n / sum(n) * 100)
+```
+
+```{r}
+ggplot(sentiment_analysis, aes(x = sentiment, y = percent, fill = sentiment)) +
+geom_bar(stat = "identity") +
+labs(
+title = "Sentiment Analysis of Tweets",
+x = "Sentiment",
+y = "Percentage of Words"
+) +
+theme_minimal()
+```
+
+
+
+2.Present your Use Case on what you will do with the dataset.
+Use Case: Tracking Public Opinion on Social Issues
+This project involves analyzing a dataset of 58,085 tweets to understand shifts in public opinion, engagement trends, and emotional responses to events. By examining tweet content, timestamps, and sources (e.g., Android/iOS), we aim to identify patterns over time.
+The findings will benefit governments, brands, media outlets, and social movements by offering actionable insights into public reactions, helping refine strategies, and guiding decision-making. Key deliverables include visualizations of trends, sentiment distributions (positive, neutral, negative), and analyses linking sentiment changes to significant events. These insights can help stakeholders anticipate future trends and respond effectively.
+
+
+3.Make sure to describe each graph you have created. Give insights.
+
+3. Graph Descriptions and Insights
+Trend Analysis: Daily Tweet Count
+Graph Description:
+
+Type: Line graph
+X-axis: Date
+Y-axis: Number of Tweets
+Purpose: This graph illustrates daily tweet counts over a specific period, highlighting fluctuations in tweet activity. It helps pinpoint spikes or dips that may correspond to notable events or significant moments.
+Insights:
+
+Spike in Activity: Days with sudden increases in tweet counts could indicate major events or viral moments that drove heightened engagement.
+Trends Over Time: Consistent high activity (e.g., weekends or specific days) or spikes tied to events reveal patterns in public engagement.
+Overall Volume: Steady tweet counts suggest sustained interest in the topic, while significant fluctuations indicate that public interest may be event-driven.
+
+
+
+Sentiment Analysis: Sentiment Distribution (Positive, Negative, Neutral)
+Graph Description:
+
+Type: Bar chart
+X-axis: Sentiment categories (Positive, Negative, Neutral)
+Y-axis: Percentage of Words
+Purpose: This chart presents the proportions of words in tweets categorized by sentiment, offering insights into the emotional tone of public discourse.
+Insights:
+
+Dominant Sentiment: A high prevalence of one sentiment (e.g., negative) indicates a strong emotional reaction from the public toward the topic or event.
+Sentiment Balance: A balanced distribution across positive, negative, and neutral sentiments suggests a more nuanced or mixed public response.
+Sentiment Shifts: Comparing sentiment distributions across different timeframes (e.g., before and after a significant event) can reveal changes in public opinion.
